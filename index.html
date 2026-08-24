@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โปรแกรมแปลงสกุลเงิน</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5ebe0;
+      color: #4a3b32;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 450px;
+      border: 1px solid #d5bdaf;
+    }
+    h2 {
+      text-align: center;
+      color: #6b4d3e;
+      margin-top: 0;
+    }
+    .group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #5c4033;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    input, select {
+      padding: 10px;
+      border: 1px solid #d5bdaf;
+      border-radius: 6px;
+      font-size: 16px;
+      background-color: #fdfbf7;
+    }
+    input {
+      flex: 1;
+    }
+    .btn-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    button {
+      flex: 1;
+      padding: 10px;
+      background-color: #8d6e63;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #6d4c41;
+    }
+    .btn-clear {
+      background-color: #a1887f;
+    }
+    .rate-info, .update-time {
+      text-align: center;
+      font-size: 13px;
+      color: #795548;
+      margin-top: 10px;
+    }
+    .history-section {
+      margin-top: 20px;
+      border-top: 2px dashed #d5bdaf;
+      padding-top: 15px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    li {
+      background-color: #f5ebe0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>แปลงสกุลเงิน</h2>
+
+    <div class="group">
+      <label>ต้นทาง (amount-one)</label>
+      <div class="input-row">
+        <input type="number" id="amount-one" placeholder="0.00">
+        <select id="currency-one">
+          <option value="THB" selected>THB</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="group">
+      <label>ปลายทาง (amount-two)</label>
+      <div class="input-row">
+        <input type="number" id="amount-two" placeholder="0.00">
+        <select id="currency-two">
+          <option value="THB">THB</option>
+          <option value="USD" selected>USD</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="rate-info" id="rate-text">อัตราแลกเปลี่ยน: 1 THB = 0.028 USD</div>
+    <div class="update-time" id="update-time">เวลาอัปเดตล่าสุด: -</div>
+
+    <div class="btn-container">
+      <button class="btn-clear" onclick="clearData()">ล้างข้อมูล</button>
+    </div>
+
+    <div class="history-section">
+      <h3>ประวัติการแปลงเงิน (10 รายการล่าสุด)</h3>
+      <ul id="history-list"></ul>
+      <button onclick="clearHistory()" style="width: 100%; margin-top: 5px;">ล้างประวัติ</button>
+    </div>
+  </div>
+
+  <script>
+    const amountOne = document.getElementById('amount-one');
+    const amountTwo = document.getElementById('amount-two');
+    const currencyOne = document.getElementById('currency-one');
+    const currencyTwo = document.getElementById('currency-two');
+    const rateText = document.getElementById('rate-text');
+    const updateTimeEl = document.getElementById('update-time');
+    const historyList = document.getElementById('history-list');
+
+    const rates = {
+      THB: { THB: 1, USD: 0.028 },
+      USD: { THB: 35.5, USD: 1 }
+    };
+
+    let historyData = [];
+
+    function updateTime() {
+      const now = new Date();
+      updateTimeEl.innerText = "เวลาอัปเดตล่าสุด: " + now.toLocaleTimeString('th-TH');
+    }
+
+    function addHistory(text) {
+      historyData.unshift(text);
+      if (historyData.length > 10) {
+        historyData.pop();
+      }
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = '';
+      historyData.forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = item;
+        historyList.appendChild(li);
+      });
+    }
+
+    function calculateForward() {
+      const val1 = parseFloat(amountOne.value);
+      if (isNaN(val1) || val1 <= 0) {
+        amountTwo.value = '';
+        return;
+      }
+      const c1 = currencyOne.value;
+      const c2 = currencyTwo.value;
+      const rate = rates[c1][c2];
+      
+      const result = (val1 * rate).toFixed(2);
+      amountTwo.value = result;
+      
+      rateText.innerText = `อัตราแลกเปลี่ยน: 1 ${c1} = ${rate} ${c2}`;
+      updateTime();
+      addHistory(`${val1} ${c1} → ${result} ${c2}`);
+    }
+
+    function calculateBackward() {
+      const val2 = parseFloat(amountTwo.value);
+      if (isNaN(val2) || val2 <= 0) {
+        amountOne.value = '';
+        return;
+      }
+      const c1 = currencyOne.value;
+      const c2 = currencyTwo.value;
+      const rate = rates[c1][c2];
+      
+      const result = (val2 / rate).toFixed(2);
+      amountOne.value = result;
+      
+      rateText.innerText = `อัตราแลกเปลี่ยน: 1 ${c1} = ${rate} ${c2}`;
+      updateTime();
+      addHistory(`${result} ${c1} ← ${val2} ${c2}`);
+    }
+
+    function clearData() {
+      amountOne.value = '';
+      amountTwo.value = '';
+      currencyOne.value = 'THB';
+      currencyTwo.value = 'USD';
+      rateText.innerText = 'อัตราแลกเปลี่ยน: 1 THB = 0.028 USD';
+      updateTimeEl.innerText = 'เวลาอัปเดตล่าสุด: -';
+    }
+
+    function clearHistory() {
+      historyData = [];
+      renderHistory();
+    }
+
+    amountOne.addEventListener('input', calculateForward);
+    amountTwo.addEventListener('input', calculateBackward);
+    currencyOne.addEventListener('change', calculateForward);
+    currencyTwo.addEventListener('change', calculateForward);
+  </script>
+</body>
+</html>
